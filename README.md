@@ -88,33 +88,91 @@ go run cmd/server/main.go
 1. 登錄 SimplyBook 管理面板
 2. 設置 webhook 指向您的服務 URL（例如：`https://your-domain.com/webhook`）
 
-## 部署到 GCP
+## 配置說明
 
-### 使用 Cloud Run 部署
+### 本地開發配置
 
-1. 構建 Docker 映像
+1. 從範例檔案創建您的配置：
+   ```bash
+   cp config.json.example config.json
+   cp .env.example .env
+   ```
 
-```bash
-docker build -t gcr.io/your-project-id/simplybook-gcal-sync .
-```
+2. 編輯這些文件，填入您的實際配置值
 
-2. 推送映像到 Google Container Registry
+3. 獲取 Google Calendar API 憑證：
+   - 進入 Google Cloud Console > API 和服務 > 憑證
+   - 創建服務帳號並下載 JSON 密鑰
+   - 將下載的 JSON 文件保存為 `google-credentials.json`
 
-```bash
-docker push gcr.io/your-project-id/simplybook-gcal-sync
-```
+### 敏感資料處理
 
-3. 部署到 Cloud Run
+所有敏感配置都應使用環境變數或 Secret Manager 進行管理：
 
-```bash
-gcloud run deploy simplybook-gcal-sync \
-  --image gcr.io/your-project-id/simplybook-gcal-sync \
-  --platform managed \
-  --allow-unauthenticated \
-  --set-env-vars="SIMPLYBOOK_COMPANY_LOGIN=your-company-login,SIMPLYBOOK_API_KEY=your-api-key,GOOGLE_CALENDAR_ID=your-calendar-id"
-```
+- `SIMPLYBOOK_COMPANY_LOGIN` - SimplyBook 公司登錄名
+- `SIMPLYBOOK_API_KEY` - SimplyBook API 金鑰
+- `GOOGLE_CALENDAR_CREDENTIALS_FILE` - Google 憑證文件路徑
+- `GOOGLE_CALENDAR_ID` - Google 日曆 ID
 
-注意：對於 Google 服務帳號憑證，建議使用 GCP 的 Secret Manager。
+**注意**：請勿將敏感配置提交到版本控制系統。檔案 `config.json`、`google-credentials.json` 和 `.env` 已加入 `.gitignore`。
+
+## 部署到 Google Cloud
+
+### 準備工作
+
+1. 創建必要的 Secrets：
+   ```bash
+   # 為 SimplyBook API 金鑰建立 Secret
+   gcloud secrets create simplybook-api-key --data-file=<(echo -n "YOUR_API_KEY")
+
+   # 為 SimplyBook 公司登錄名建立 Secret
+   gcloud secrets create simplybook-company-login --data-file=<(echo -n "YOUR_COMPANY_LOGIN")
+
+   # 為 Google Calendar ID 建立 Secret
+   gcloud secrets create google-calendar-id --data-file=<(echo -n "YOUR_CALENDAR_ID")
+
+   # 為 Google 憑證建立 Secret
+   gcloud secrets create google-calendar-creds --data-file=google-credentials.json
+   ```
+
+2. 授予 Cloud Run 服務帳號訪問權限：
+   ```bash
+   # 獲取服務帳號
+   SERVICE_ACCOUNT=$(gcloud iam service-accounts list --filter="displayName:Cloud Run Service Agent" --format="value(email)")
+
+   # 授予訪問權限
+   for SECRET in simplybook-api-key simplybook-company-login google-calendar-id google-calendar-creds; do
+     gcloud secrets add-iam-policy-binding $SECRET \
+       --member="serviceAccount:$SERVICE_ACCOUNT" \
+       --role="roles/secretmanager.secretAccessor"
+   done
+   ```
+
+### 構建和部署
+
+1. 構建容器：
+   ```bash
+   gcloud builds submit --tag gcr.io/booking-sync-455103/booking-sync .
+   ```
+
+2. 部署到 Cloud Run：
+   ```bash
+   # 設置您的專案 ID
+   PROJECT_ID="your-project-id"  # 替換為您的實際專案 ID
+
+   gcloud run deploy booking-sync \
+     --image=gcr.io/${PROJECT_ID}/booking-sync \
+     --platform=managed \
+     --region=asia-east1 \
+     --service-account=booking-sync-service@${PROJECT_ID}.iam.gserviceaccount.com \
+     --set-env-vars="GOOGLE_CALENDAR_CREDENTIALS_FILE=/secrets/google-calendar-creds" \
+     --update-secrets="\
+/secrets/google-calendar-creds=google-calendar-creds:latest,\
+SIMPLYBOOK_COMPANY_LOGIN=simplybook-company-login:latest,\
+SIMPLYBOOK_API_KEY=simplybook-api-key:latest,\
+GOOGLE_CALENDAR_ID=google-calendar-id:latest" \
+     --project=${PROJECT_ID}
+   ```
 
 ## 許可證
 

@@ -43,4 +43,8 @@ google-credentials.json
 
 # 臨時目錄
 /tmp
-/temp 
+/temp
+
+# 生產環境配置
+config.prod.json 
+google-credentials.json.example

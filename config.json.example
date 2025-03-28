@@ -1,0 +1,14 @@
+{
+  "server": {
+    "port": 8080,
+    "webhook_path": "/webhook"
+  },
+  "simplybook": {
+    "company_login": "your-simplybook-company-login",
+    "api_key": "your-simplybook-api-key"
+  },
+  "google_calendar": {
+    "credentials_file": "./google-credentials.json",
+    "calendar_id": "your-calendar-id@group.calendar.google.com"
+  }
+} 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -21,6 +22,14 @@ func main() {
 	// 解析命令行參數
 	configPath := flag.String("config", "", "配置文件路徑")
 	flag.Parse()
+
+	// 如果沒有指定配置文件，則使用環境變數
+	if *configPath == "" {
+		if envPath := os.Getenv("CONFIG_PATH"); envPath != "" {
+			*configPath = envPath
+			log.Printf("使用環境變數中的配置文件路徑: %s", *configPath)
+		}
+	}
 
 	// 加載配置
 	cfg, err := config.LoadConfig(*configPath)
@@ -64,33 +73,45 @@ func main() {
 		w.Write([]byte("服務正常運行中"))
 	})
 
+	// 優先使用環境變數 PORT
+	port := cfg.Server.Port
+	if portEnv := os.Getenv("PORT"); portEnv != "" {
+		if p, err := strconv.Atoi(portEnv); err == nil {
+			port = p
+			log.Printf("使用環境變數 PORT 設置的端口: %d", port)
+		} else {
+			log.Printf("無效的 PORT 環境變數值: %s，使用配置端口: %d", portEnv, port)
+		}
+	}
+
 	// 設置伺服器
 	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
 
-	// 在獨立的 goroutine 中啟動伺服器
+	// 設置優雅關閉的處理
 	go func() {
-		log.Printf("伺服器正在監聽端口 %d...", cfg.Server.Port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("伺服器啟動失敗: %v", err)
+		// 等待中斷信號
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		<-quit
+		log.Println("關閉伺服器...")
+
+		// 創建關閉伺服器的上下文
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := server.Shutdown(ctx); err != nil {
+			log.Fatalf("強制關閉伺服器: %v", err)
 		}
+
+		log.Println("伺服器已優雅關閉")
 	}()
 
-	// 設置優雅關閉
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	log.Println("關閉伺服器...")
-
-	// 創建關閉伺服器的上下文
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("強制關閉伺服器: %v", err)
+	// 直接啟動伺服器（不在 goroutine 中）
+	log.Printf("伺服器正在監聽端口 %d...", port)
+	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalf("伺服器啟動失敗: %v", err)
 	}
-
-	log.Println("伺服器已優雅關閉")
 } 
