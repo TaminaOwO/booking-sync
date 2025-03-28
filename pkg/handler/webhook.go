@@ -53,11 +53,17 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	// 記錄原始的請求數據，以便查看資料格式
+	log.Printf("收到 webhook 請求，原始數據: %s", string(body))
+
 	var payload simplybook.WebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		http.Error(w, "無效的 JSON 數據", http.StatusBadRequest)
 		return
 	}
+
+	// 記錄解析後的資料結構
+	log.Printf("解析後的資料: Action=%s, BookingID=%s", payload.Action, payload.BookingID)
 
 	// 處理 webhook 事件（非同步處理，避免超時）
 	go func() {
