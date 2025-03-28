@@ -1,0 +1,46 @@
+# 二進制文件
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+
+# 測試文件
+*.test
+*.tmp
+*.bench
+
+# 輸出文件
+*.out
+
+# 依賴目錄
+vendor/
+
+# IDE 配置文件
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# 系統文件
+.DS_Store
+Thumbs.db
+
+# 編譯輸出
+simplybook-gcal-sync
+
+# 私密配置
+*.pem
+*.key
+config.json
+google-credentials.json
+.env
+
+# 日誌文件
+*.log
+
+# 臨時目錄
+/tmp
+/temp 

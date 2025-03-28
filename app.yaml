@@ -1,0 +1,19 @@
+runtime: go119
+service: booking-sync
+
+env: flex
+manual_scaling:
+  instances: 1
+
+env_variables:
+  SERVER_PORT: "8080"
+  CONFIG_PATH: "/app/config.json"
+
+# 健康檢查設置
+health_check:
+  enable_health_check: true
+  check_interval_sec: 30
+  timeout_sec: 5
+  app_start_timeout_sec: 300
+  unhealthy_threshold: 2
+  healthy_threshold: 1 
