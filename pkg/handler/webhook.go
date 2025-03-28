@@ -7,10 +7,9 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 
-	"github.com/yourusername/async-booking/pkg/gcalendar"
-	"github.com/yourusername/async-booking/pkg/simplybook"
+	"github.com/booking-sync-455103/booking-sync/pkg/gcalendar"
+	"github.com/booking-sync-455103/booking-sync/pkg/simplybook"
 )
 
 // WebhookHandler 處理 SimplyBook webhook 通知
@@ -75,55 +74,75 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 // processWebhookEvent 處理 webhook 事件並更新 Google 日曆
 func (h *WebhookHandler) processWebhookEvent(payload *simplybook.WebhookPayload) error {
 	log.Printf("處理 %s 操作，預約 ID: %s", payload.Action, payload.BookingID)
-
-	switch strings.ToLower(payload.Action) {
+	
+	// 先獲取預約詳情和對應的日曆事件ID
+	booking, eventID, err := h.getBookingAndEvent(payload.BookingID)
+	if err != nil {
+		return err
+	}
+	
+	action := strings.ToLower(payload.Action)
+	
+	// 根據操作類型處理
+	switch action {
 	case "create":
-		return h.handleBookingCreated(payload.BookingID)
+		return h.handleBookingCreated(booking, eventID, payload.BookingID)
 	case "update":
-		return h.handleBookingUpdated(payload.BookingID)
+		return h.handleBookingUpdated(booking, eventID, payload.BookingID)
 	case "cancel":
-		return h.handleBookingDeleted(payload.BookingID)
+		return h.handleBookingDeleted(eventID, payload.BookingID)
 	default:
 		return fmt.Errorf("不支持的操作類型: %s", payload.Action)
 	}
 }
 
-// handleBookingCreated 處理新預約創建
-func (h *WebhookHandler) handleBookingCreated(bookingID string) error {
+// getBookingAndEvent 獲取預約詳情和對應的日曆事件ID（如存在）
+func (h *WebhookHandler) getBookingAndEvent(bookingID string) (*simplybook.Booking, string, error) {
 	// 獲取預約詳情
 	booking, err := h.simplybookClient.GetBooking(bookingID)
 	if err != nil {
-		return fmt.Errorf("獲取預約詳情失敗: %w", err)
+		return nil, "", fmt.Errorf("獲取預約詳情失敗: %w", err)
+	}
+
+	// 查找現有的日曆事件
+	eventID, err := h.calendarClient.FindEventByBookingCode(booking.Code)
+	if err != nil {
+		return booking, "", fmt.Errorf("查找日曆事件失敗: %w", err)
+	}
+
+	return booking, eventID, nil
+}
+
+// handleBookingCreated 處理新預約創建
+func (h *WebhookHandler) handleBookingCreated(booking *simplybook.Booking, eventID, bookingID string) error {
+	// 如果已經存在事件，則不需要再創建
+	if eventID != "" {
+		log.Printf("預約 %s 的日曆事件已存在 %s", bookingID, eventID)
+		return nil
 	}
 
 	// 創建日曆事件
 	calEvent := createCalendarEventFromBooking(booking)
-	eventID, err := h.calendarClient.CreateEvent(calEvent)
+	newEventID, err := h.calendarClient.CreateEvent(calEvent)
 	if err != nil {
 		return fmt.Errorf("創建日曆事件失敗: %w", err)
 	}
 
-	log.Printf("為預約 %s 創建了日曆事件 %s", bookingID, eventID)
+	log.Printf("為預約 %s 創建了日曆事件 %s", bookingID, newEventID)
 	return nil
 }
 
 // handleBookingUpdated 處理預約更新
-func (h *WebhookHandler) handleBookingUpdated(bookingID string) error {
-	// 獲取預約詳情
-	booking, err := h.simplybookClient.GetBooking(bookingID)
-	if err != nil {
-		return fmt.Errorf("獲取預約詳情失敗: %w", err)
-	}
-
-	// 查找現有的日曆事件
-	eventID, err := h.calendarClient.FindEventByBookingID(bookingID)
-	if err != nil {
-		return fmt.Errorf("查找日曆事件失敗: %w", err)
-	}
-
+func (h *WebhookHandler) handleBookingUpdated(booking *simplybook.Booking, eventID, bookingID string) error {
 	if eventID == "" {
 		// 事件不存在，創建新事件
-		return h.handleBookingCreated(bookingID)
+		calEvent := createCalendarEventFromBooking(booking)
+		newEventID, err := h.calendarClient.CreateEvent(calEvent)
+		if err != nil {
+			return fmt.Errorf("創建日曆事件失敗: %w", err)
+		}
+		log.Printf("為更新的預約 %s 創建了新的日曆事件 %s", bookingID, newEventID)
+		return nil
 	}
 
 	// 更新日曆事件
@@ -137,13 +156,7 @@ func (h *WebhookHandler) handleBookingUpdated(bookingID string) error {
 }
 
 // handleBookingDeleted 處理預約刪除
-func (h *WebhookHandler) handleBookingDeleted(bookingID string) error {
-	// 查找現有的日曆事件
-	eventID, err := h.calendarClient.FindEventByBookingID(bookingID)
-	if err != nil {
-		return fmt.Errorf("查找日曆事件失敗: %w", err)
-	}
-
+func (h *WebhookHandler) handleBookingDeleted(eventID, bookingID string) error {
 	if eventID == "" {
 		// 事件不存在，無需操作
 		log.Printf("未找到預約 %s 的日曆事件", bookingID)
@@ -162,30 +175,22 @@ func (h *WebhookHandler) handleBookingDeleted(bookingID string) error {
 // createCalendarEventFromBooking 從預約信息創建日曆事件
 func createCalendarEventFromBooking(booking *simplybook.Booking) *gcalendar.CalendarEvent {
 	// 創建事件描述，包含預約詳情
-	description := fmt.Sprintf(
-		"預約編號: %s\n客戶: %s\n電話: %s\n電子郵件: %s\n備註: %s\nBookingID: %s",
-		booking.Code,
-		booking.ClientName,
-		booking.ClientPhone,
-		booking.ClientEmail,
-		booking.Notes,
-		booking.ID,
-	)
+	description := booking.Code
 
 	// 創建事件標題
-	summary := fmt.Sprintf("%s - %s", booking.ServiceName, booking.ClientName)
+	summary := booking.ClientName
 
 	// 設置參與者（如果有電子郵件）
-	var attendees []string
-	if booking.ClientEmail != "" {
-		attendees = append(attendees, booking.ClientEmail)
-	}
+	// var attendees []string
+	// if booking.ClientEmail != "" {
+	// 	attendees = append(attendees, booking.ClientEmail)
+	// }
 
 	return &gcalendar.CalendarEvent{
 		Summary:     summary,
 		Description: description,
 		StartTime:   booking.StartTime,
 		EndTime:     booking.EndTime,
-		Attendees:   attendees,
+		// Attendees:   attendees,
 	}
 } 

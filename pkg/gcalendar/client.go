@@ -158,10 +158,10 @@ func (c *Client) GetEvent(eventID string) (*CalendarEvent, error) {
 	return event, nil
 }
 
-// FindEventByBookingID 根據預約 ID 從描述中搜索事件
-func (c *Client) FindEventByBookingID(bookingID string) (string, error) {
+// FindEventByBookingCode 根據預約 ID 從描述中搜索事件
+func (c *Client) FindEventByBookingCode(bookingCode string) (string, error) {
 	// 搜尋描述中包含預約 ID 的事件
-	query := fmt.Sprintf("BookingID: %s", bookingID)
+	query := fmt.Sprintf("bookingCode: %s", bookingCode)
 	events, err := c.service.Events.List(c.calendarID).Q(query).Do()
 	if err != nil {
 		return "", fmt.Errorf("搜尋事件失敗: %w", err)

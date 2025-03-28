@@ -1,4 +1,4 @@
-module github.com/yourusername/async-booking
+module github.com/booking-sync-455103/booking-sync
 
 go 1.19
 

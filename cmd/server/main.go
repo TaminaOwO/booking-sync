@@ -11,10 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/yourusername/async-booking/config"
-	"github.com/yourusername/async-booking/pkg/gcalendar"
-	"github.com/yourusername/async-booking/pkg/handler"
-	"github.com/yourusername/async-booking/pkg/simplybook"
+	"github.com/booking-sync-455103/booking-sync/config"
+	"github.com/booking-sync-455103/booking-sync/pkg/gcalendar"
+	"github.com/booking-sync-455103/booking-sync/pkg/handler"
+	"github.com/booking-sync-455103/booking-sync/pkg/simplybook"
 )
 
 func main() {
