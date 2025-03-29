@@ -41,10 +41,22 @@ type Provider struct {
 
 // WebhookPayload 表示 SimplyBook 的 webhook 負載
 type WebhookPayload struct {
-	Action     string `json:"action"` // 'create', 'update', 'cancel'
-	BookingID  string `json:"booking_id"`
-	ClientID   string `json:"client_id"`
-	ProviderID string `json:"provider_id"`
-	ServiceID  string `json:"service_id"`
-	Timestamp  string `json:"timestamp"`
+	Action      string `json:"notification_type"` // 'create', 'update', 'cancel'
+	BookingID   string `json:"booking_id"`
+	Company     string `json:"company"`
+	BookingHash string `json:"booking_hash"`
+	Timestamp   string `json:"webhook_timestamp"`
 }
+
+/** webhook example
+
+{
+	"booking_id":"2359",
+	"booking_hash":"8fc073069dacec5b52775d741a9edbe8",
+	"company":"choice",
+	"notification_type":"notify",
+	"webhook_timestamp":1743210065,
+	"signature_algo":"sha256"
+}
+
+**/
