@@ -54,27 +54,9 @@ func NewClient(credentialsJSON []byte, calendarID string) (*Client, error) {
 
 // CreateEvent 在 Google 日曆中創建事件
 func (c *Client) CreateEvent(event *CalendarEvent) (string, error) {
-	calEvent := &calendar.Event{
-		Summary:     event.Summary,
-		Description: event.Description,
-		Location:    event.Location,
-		Start: &calendar.EventDateTime{
-			DateTime: event.StartTime.Format(time.RFC3339),
-			TimeZone: "Asia/Taipei", // 設置為台灣時區，可根據需要調整
-		},
-		End: &calendar.EventDateTime{
-			DateTime: event.EndTime.Format(time.RFC3339),
-			TimeZone: "Asia/Taipei",
-		},
-	}
-
-	// 加入參與者
-	if len(event.Attendees) > 0 {
-		attendees := make([]*calendar.EventAttendee, len(event.Attendees))
-		for i, email := range event.Attendees {
-			attendees[i] = &calendar.EventAttendee{Email: email}
-		}
-		calEvent.Attendees = attendees
+	calEvent, err := c.prepareCalendarEvent(event)
+	if err != nil {
+		return "", fmt.Errorf("準備日曆事件失敗: %w", err)
 	}
 
 	createdEvent, err := c.service.Events.Insert(c.calendarID, calEvent).Do()
@@ -87,17 +69,46 @@ func (c *Client) CreateEvent(event *CalendarEvent) (string, error) {
 
 // UpdateEvent 更新 Google 日曆中的事件
 func (c *Client) UpdateEvent(eventID string, event *CalendarEvent) error {
+	calEvent, err := c.prepareCalendarEvent(event)
+	if err != nil {
+		return fmt.Errorf("準備日曆事件失敗: %w", err)
+	}
+
+	_, err = c.service.Events.Update(c.calendarID, eventID, calEvent).Do()
+	if err != nil {
+		return fmt.Errorf("更新事件失敗: %w", err)
+	}
+
+	return nil
+}
+
+// prepareCalendarEvent 準備要發送給 Google Calendar API 的事件物件
+func (c *Client) prepareCalendarEvent(event *CalendarEvent) (*calendar.Event, error) {
+	// 獲取台灣時區
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		loc = time.FixedZone("GMT+8", 8*60*60)
+	}
+
+	// 確保時間是台灣時區的
+	startTime := event.StartTime.In(loc)
+	endTime := event.EndTime.In(loc)
+
+	// 格式化為不帶時區信息的時間格式
+	startDateTime := startTime.Format("2006-01-02T15:04:05")
+	endDateTime := endTime.Format("2006-01-02T15:04:05")
+
 	calEvent := &calendar.Event{
 		Summary:     event.Summary,
 		Description: event.Description,
 		Location:    event.Location,
 		Start: &calendar.EventDateTime{
-			DateTime: event.StartTime.Format(time.RFC3339),
-			TimeZone: "Asia/Taipei",
+			DateTime: startDateTime,
+			TimeZone: "Asia/Taipei", // 明確指定台灣時區
 		},
 		End: &calendar.EventDateTime{
-			DateTime: event.EndTime.Format(time.RFC3339),
-			TimeZone: "Asia/Taipei",
+			DateTime: endDateTime,
+			TimeZone: "Asia/Taipei", // 明確指定台灣時區
 		},
 	}
 
@@ -110,12 +121,7 @@ func (c *Client) UpdateEvent(eventID string, event *CalendarEvent) error {
 		calEvent.Attendees = attendees
 	}
 
-	_, err := c.service.Events.Update(c.calendarID, eventID, calEvent).Do()
-	if err != nil {
-		return fmt.Errorf("更新事件失敗: %w", err)
-	}
-
-	return nil
+	return calEvent, nil
 }
 
 // DeleteEvent 刪除 Google 日曆中的事件
@@ -158,10 +164,10 @@ func (c *Client) GetEvent(eventID string) (*CalendarEvent, error) {
 	return event, nil
 }
 
-// FindEventByBookingCode 根據預約 ID 從描述中搜索事件
+// FindEventByBookingCode 根據預約編號從描述中搜索事件
 func (c *Client) FindEventByBookingCode(bookingCode string) (string, error) {
-	// 搜尋描述中包含預約 ID 的事件
-	query := fmt.Sprintf("%s", bookingCode)
+	// 搜尋描述中包含預約 Code 的事件
+	query := bookingCode
 	events, err := c.service.Events.List(c.calendarID).Q(query).Do()
 	if err != nil {
 		return "", fmt.Errorf("搜尋事件失敗: %w", err)

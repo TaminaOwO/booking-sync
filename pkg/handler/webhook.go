@@ -58,6 +58,7 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	var payload simplybook.WebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
+		log.Printf("Error: %s", string(err.Error()))
 		http.Error(w, "無效的 JSON 數據", http.StatusBadRequest)
 		return
 	}
@@ -93,7 +94,7 @@ func (h *WebhookHandler) processWebhookEvent(payload *simplybook.WebhookPayload)
 	switch action {
 	case "create":
 		return h.handleBookingCreated(booking, eventID, payload.BookingID)
-	case "update":
+	case "change":
 		return h.handleBookingUpdated(booking, eventID, payload.BookingID)
 	case "cancel":
 		return h.handleBookingDeleted(eventID, payload.BookingID)
@@ -195,8 +196,8 @@ func createCalendarEventFromBooking(booking *simplybook.Booking) *gcalendar.Cale
 	return &gcalendar.CalendarEvent{
 		Summary:     summary,
 		Description: description,
-		StartTime:   booking.StartTime,
-		EndTime:     booking.EndTime,
+		StartTime:   booking.StartTime.Time,
+		EndTime:     booking.EndTime.Time,
 		// Attendees:   attendees,
 	}
 }

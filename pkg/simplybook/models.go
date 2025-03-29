@@ -1,6 +1,9 @@
 package simplybook
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // BookingClient 結構體用於表示客戶
 type BookingClient struct {
@@ -9,16 +12,51 @@ type BookingClient struct {
 	Phone string `json:"phone,omitempty"`
 }
 
+// customTime 自定義時間類型，用於解析 SimplyBook API 返回的日期時間格式
+type customTime struct {
+	time.Time
+}
+
+// UnmarshalJSON 自定義時間解析方法
+func (ct *customTime) UnmarshalJSON(b []byte) error {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" {
+		ct.Time = time.Time{}
+		return nil
+	}
+
+	// 使用適合 SimplyBook API 返回格式的時間解析
+	t, err := time.Parse("2006-01-02 15:04:05", s)
+	if err != nil {
+		return err
+	}
+
+	// 設定台灣時區 (GMT+8)
+	loc, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		// 如果無法載入台灣時區，使用固定偏移
+		loc = time.FixedZone("GMT+8", 8*60*60)
+	}
+
+	// 將時間設為台灣時區
+	ct.Time = time.Date(
+		t.Year(), t.Month(), t.Day(),
+		t.Hour(), t.Minute(), t.Second(), t.Nanosecond(),
+		loc,
+	)
+	return nil
+}
+
 // Booking 表示預約資訊，根據提供的 API 響應格式修改
 type Booking struct {
-	ID           string        `json:"id"`
+	ID           int           `json:"id"`
 	Code         string        `json:"code"`
-	StartTime    time.Time     `json:"start_datetime"`
-	EndTime      time.Time     `json:"end_datetime"`
+	StartTime    customTime    `json:"start_datetime"`
+	EndTime      customTime    `json:"end_datetime"`
 	Client       BookingClient `json:"client"`
-	ServiceID    string        `json:"service_id,omitempty"`
+	ServiceID    int           `json:"service_id,omitempty"`
 	ServiceName  string        `json:"service_name,omitempty"`
-	ProviderID   string        `json:"provider_id,omitempty"`
+	ProviderID   int           `json:"provider_id,omitempty"`
 	ProviderName string        `json:"provider_name,omitempty"`
 	Confirmed    bool          `json:"confirmed,omitempty"`
 	Notes        string        `json:"notes,omitempty"`
@@ -41,7 +79,7 @@ type Provider struct {
 
 // WebhookPayload 表示 SimplyBook 的 webhook 負載
 type WebhookPayload struct {
-	Action      string `json:"notification_type"` // 'create', 'update', 'cancel'
+	Action      string `json:"notification_type"` // 'create', 'change', 'cancel', 'notify'
 	BookingID   string `json:"booking_id"`
 	Company     string `json:"company"`
 	BookingHash string `json:"booking_hash"`
@@ -58,5 +96,7 @@ type WebhookPayload struct {
 	"webhook_timestamp":1743210065,
 	"signature_algo":"sha256"
 }
+
+{"booking_id":"2360","booking_hash":"a59127ec2727c4a30b3a1e1f10867e61","company":"choice","notification_type":"change","webhook_timestamp":1743224826,"signature_algo":"sha256"}
 
 **/

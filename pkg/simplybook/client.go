@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 )
@@ -195,6 +196,8 @@ func (c *Client) GetBooking(bookingID string) (*Booking, error) {
 	if err != nil {
 		return nil, fmt.Errorf("獲取預約失敗: %w", err)
 	}
+
+	log.Printf("respBody: %s", string(respBody))
 
 	var booking Booking
 	if err := json.Unmarshal(respBody, &booking); err != nil {
