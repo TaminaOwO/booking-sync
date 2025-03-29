@@ -80,15 +80,15 @@ func (h *WebhookHandler) HandleWebhook(w http.ResponseWriter, r *http.Request) {
 // processWebhookEvent 處理 webhook 事件並更新 Google 日曆
 func (h *WebhookHandler) processWebhookEvent(payload *simplybook.WebhookPayload) error {
 	log.Printf("處理 %s 操作，預約 ID: %s", payload.Action, payload.BookingID)
-	
+
 	// 先獲取預約詳情和對應的日曆事件ID
 	booking, eventID, err := h.getBookingAndEvent(payload.BookingID)
 	if err != nil {
 		return err
 	}
-	
+
 	action := strings.ToLower(payload.Action)
-	
+
 	// 根據操作類型處理
 	switch action {
 	case "create":
@@ -184,7 +184,7 @@ func createCalendarEventFromBooking(booking *simplybook.Booking) *gcalendar.Cale
 	description := booking.Code
 
 	// 創建事件標題
-	summary := booking.ClientName
+	summary := booking.Client.Name
 
 	// 設置參與者（如果有電子郵件）
 	// var attendees []string
@@ -199,4 +199,4 @@ func createCalendarEventFromBooking(booking *simplybook.Booking) *gcalendar.Cale
 		EndTime:     booking.EndTime,
 		// Attendees:   attendees,
 	}
-} 
+}

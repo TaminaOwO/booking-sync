@@ -122,8 +122,11 @@ go run cmd/server/main.go
 
 1. 創建必要的 Secrets：
    ```bash
-   # 為 SimplyBook API 金鑰建立 Secret
-   gcloud secrets create simplybook-api-key --data-file=<(echo -n "YOUR_API_KEY")
+   # 為 SimplyBook 使用者名稱建立 Secret
+   gcloud secrets create simplybook-username --data-file=<(echo -n "YOUR_USERNAME")
+
+   # 為 SimplyBook 密碼建立 Secret
+   gcloud secrets create simplybook-password --data-file=<(echo -n "YOUR_PASSWORD")
 
    # 為 SimplyBook 公司登錄名建立 Secret
    gcloud secrets create simplybook-company-login --data-file=<(echo -n "YOUR_COMPANY_LOGIN")
@@ -141,7 +144,7 @@ go run cmd/server/main.go
    SERVICE_ACCOUNT=$(gcloud iam service-accounts list --filter="displayName:Cloud Run Service Agent" --format="value(email)")
 
    # 授予訪問權限
-   for SECRET in simplybook-api-key simplybook-company-login google-calendar-id google-calendar-creds; do
+   for SECRET in simplybook-username simplybook-password simplybook-company-login google-calendar-id google-calendar-creds; do
      gcloud secrets add-iam-policy-binding $SECRET \
        --member="serviceAccount:$SERVICE_ACCOUNT" \
        --role="roles/secretmanager.secretAccessor"
@@ -169,7 +172,8 @@ go run cmd/server/main.go
      --update-secrets="\
 /secrets/google-calendar-creds=google-calendar-creds:latest,\
 SIMPLYBOOK_COMPANY_LOGIN=simplybook-company-login:latest,\
-SIMPLYBOOK_API_KEY=simplybook-api-key:latest,\
+SIMPLYBOOK_USERNAME=simplybook-username:latest,\
+SIMPLYBOOK_PASSWORD=simplybook-password:latest,\
 GOOGLE_CALENDAR_ID=google-calendar-id:latest" \
      --project=${PROJECT_ID}
    ```

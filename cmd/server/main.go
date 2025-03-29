@@ -40,7 +40,8 @@ func main() {
 	// 初始化 SimplyBook 客戶端
 	simplybookClient, err := simplybook.NewClient(
 		cfg.SimplyBook.CompanyLogin,
-		cfg.SimplyBook.APIKey,
+		cfg.SimplyBook.UserName,
+		cfg.SimplyBook.Password,
 	)
 	if err != nil {
 		log.Fatalf("初始化 SimplyBook 客戶端失敗: %v", err)
@@ -114,4 +115,4 @@ func main() {
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("伺服器啟動失敗: %v", err)
 	}
-} 
+}
