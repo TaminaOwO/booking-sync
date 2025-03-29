@@ -49,14 +49,15 @@ go mod download
     "webhook_path": "/webhook"
   },
   "simplybook": {
-    "company_login": "your-company-login",
-    "api_key": "your-api-key"
+    "company_login": "your-simplybook-company-login",
+    "user_name": "your-simplybook-user_name",
+    "password": "your-simplybook-password"
   },
   "google_calendar": {
     "credentials_file": "./google-credentials.json",
     "calendar_id": "your-calendar-id@group.calendar.google.com"
   }
-}
+} 
 ```
 
 4. 準備 Google 服務帳號憑證
@@ -76,7 +77,8 @@ go run cmd/server/main.go -config=./config.json
 export SERVER_PORT=8080
 export WEBHOOK_PATH="/webhook"
 export SIMPLYBOOK_COMPANY_LOGIN="your-company-login"
-export SIMPLYBOOK_API_KEY="your-api-key"
+export SIMPLYBOOK_USERNAME="your-username"
+export SIMPLYBOOK_PASSWORD="your-password"
 export GOOGLE_CALENDAR_CREDENTIALS_FILE="./google-credentials.json"
 export GOOGLE_CALENDAR_ID="your-calendar-id@group.calendar.google.com"
 

@@ -5,7 +5,7 @@
   },
   "simplybook": {
     "company_login": "your-simplybook-company-login",
-    "user_name": "your-simplybook-user_name",
+    "username": "your-simplybook-username",
     "password": "your-simplybook-password"
   },
   "google_calendar": {

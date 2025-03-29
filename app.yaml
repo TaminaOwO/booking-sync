@@ -7,7 +7,7 @@ manual_scaling:
 
 env_variables:
   SERVER_PORT: "8080"
-  CONFIG_PATH: "/app/config.json"
+  CONFIG_PATH: "/config.json"
 
 # 健康檢查設置
 health_check:
