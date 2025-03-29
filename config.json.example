@@ -5,7 +5,8 @@
   },
   "simplybook": {
     "company_login": "your-simplybook-company-login",
-    "api_key": "your-simplybook-api-key"
+    "user_name": "your-simplybook-user_name",
+    "password": "your-simplybook-password"
   },
   "google_calendar": {
     "credentials_file": "./google-credentials.json",
